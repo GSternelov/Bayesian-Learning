@@ -1,0 +1,249 @@
+---
+title: "Lab 3"
+author: "Gustav Sternelöv"
+date: "3 maj 2016"
+output: pdf_document
+---
+
+# Assignment 1 - Normal model, mixture of normal model with semi-conjugate prior.
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#### Assignment 1 ####
+rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab 3/rainfall.dat", sep="", header = TRUE)
+library(ggplot2)
+library(gridExtra)
+```
+## a) Normal model.
+
+### i)
+```{r,echo=FALSE}
+## a)
+# priors and others
+mu0 <- 1
+kappa0 <- 1
+v0 <- 1
+sigma0 <- 1
+n <- nrow(rainfall)
+ybar <- colMeans(rainfall)
+s2 <- var(rainfall[,1])
+
+# Posteriors
+muN <- (kappa0 / (kappa0 + n)) * mu0 + (n / (kappa0 + n)) * ybar 
+kappaN <- kappa0 + n
+vN <- v0 +n 
+vNsigmaN <- v0*sigma0 + (n-1)*s2 + (kappa0*n / (kappa0 + n)) * (ybar - mu0)^2
+sigmaN <- vNsigmaN / vN
+
+# Simulations - Gibbs Sampling
+sims <- data.frame(mu=0, sigma2=0)
+muN <- (kappa0 / (kappa0 + n)) * mu0 + (n / (kappa0 + n)) * ybar 
+vNsigmaN <- v0*sigma0 + (n-1)*s2 + (kappa0*n / (kappa0 + n)) * (ybar - muN)^2
+sigmaN <- vNsigmaN / vN
+X <- rchisq(1, vN)
+sigma2 <- (vN * sigmaN / X)
+mu <- rnorm(1, muN, sqrt(sigma2/kappaN))  
+sims[1,1] <-  mu
+sims[1,2] <-  sigma2 
+for (i in 2:1000){
+  # Byter ut mu0 mot [i-1,1] i sims
+  # Byter ut sigma0 mot [i-1,2] i sims
+  muN <- (kappa0 / (kappa0 + n)) * sims[i-1,1] + (n / (kappa0 + n)) * ybar 
+  # Byter ut mu0 mot muN
+  vNsigmaN <- v0*sims[i-1,2] + (n-1)*s2 + (kappa0*n / (kappa0 + n)) * (ybar - muN)^2
+  sigmaN <- vNsigmaN / vN
+  X <- rchisq(1, n-1)
+  sigma2 <- (vN * sigmaN / X)
+  mu <- rnorm(1, muN, sqrt(sigma2/kappaN))  
+  sims[i,1] <-  mu
+  sims[i,2] <-  sigma2 
+}
+```
+The code used to implement the Gibbs sampler that simulates from the joint posterior can be seen in the appendix *R-code*.  
+
+### ii)  
+
+The Gibbs sampler from *i)* is tested and it is of interest to investigate the convergence of the chains. One way to check this is by trace plots.  
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+#trace plots - with burn-in!
+tr_w_burn <- ggplot(sims, aes(x=1:nrow(sims), y=mu)) + geom_line() + theme_bw() + xlab("1:1000") + ylab("Mu") + ggtitle("Gibbs Sampling - Trace Plot - Mu") + geom_vline(xintercept=50, col="red", size=1.05)
+tr_w_burn2 <- ggplot(sims, aes(x=1:nrow(sims), y=sigma2)) + geom_line() +
+  theme_bw() +ggtitle("Gibbs Sampling - Trace Plot - Sigma^2")+ xlab("1:1000") + geom_vline(xintercept=50, col="red", size=1.05)
+grid.arrange(tr_w_burn, tr_w_burn2, ncol=2)
+```
+By the look of the plots above it seems like the chain has converged for both $\mu$ and $\sigma^2$. The chains converges quickly and if there is a burn-in period, it is thought to be short. Out of the 1000 iterations, perhaps 50 iterations in both cases can be classified as belonging to the burn-in period. Even though it is hard to see a specific burn-in period it is reasonable to make the assumption that some proportion of the first iterations not have converged and should be discarded. 
+
+The chains are thought to have converged since they have a pattern that is...
+
+Next, trace plots for the respective chains shown without the burn-in period.  
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+tr_wh_burn <- ggplot(sims[51:1000,], aes(x=51:nrow(sims), y=mu)) + geom_line() + theme_bw() + xlab("1:1000") + ylab("Mu") + ggtitle("Gibbs Sampling - Trace Plot - Mu\n Without burn-in")
+tr_wh_burn2 <- ggplot(sims[51:1000,], aes(x=51:nrow(sims), y=sigma2)) + geom_line() + theme_bw() + ggtitle("Gibbs Sampling - Trace Plot - Sigma^2\n Without burn-in") + xlab("1:1000")
+grid.arrange(tr_wh_burn, tr_wh_burn2, ncol=2)
+```
+
+The convergence can also be checked by looking at the autocorrelation of the chains with the burn-in removed.  
+```{r, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE}
+# Looks at efficieny in terms of auto-correlation
+acf_m <- acf(sims[51:1000,1], lag.max = 30, type = c("correlation"), plot=FALSE)
+acf_s <- acf(sims[51:1000,2], lag.max = 30, type = c("correlation"), plot=FALSE)
+acf_m <- data.frame(ACF=as.numeric(acf_m$acf), Lag=0:30)
+acf_s <- data.frame(ACF=as.numeric(acf_s$acf), Lag=0:30)
+acf_mu <- ggplot(acf_m, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for chain - Mu")
+acf_sigma <- ggplot(acf_s, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for chain - Sigma^2")
+grid.arrange(acf_mu, acf_sigma, ncol=2)
+```
+Seem to move quite freely, there is no strong correlation between one iteration and the coming iterations. 
+Does also speaks for the conclusion that convergence has been reached for both chains. 
+
+## b) Mixture normal model.
+
+### i)
+Mattias's code are used for this assignment and added to the appendix at the end of the report. The prior hyperparameters are set to 
+
+Uses standard deviation of observations for assigning prior standard deviation for $\mu$. 
+The variance of the observations is used for $\sigma^_0$
+The prior mean is set to 30, close to the mean for the observations (32.27).
+For the prior on $\sigma^2$ is the degress of freedom set to 4. 
+$\alpha_0$, the prior for the beta distribution, is set (10,10). This is a prior that is used for assigning the probability that a value belong to the distribution. 
+
+```{r, echo=FALSE}
+rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab 3/rainfall.dat",
+                       sep="", header = TRUE)
+x <- as.matrix(rainfall['X136'])
+
+# Model options
+nComp <- 2    # Number of mixture components
+
+# Prior options
+alpha <- 10*rep(1,nComp) # Dirichlet(alpha)
+alpha <- c(10, 10)
+muPrior <- rep(0,nComp) # Prior mean of theta
+muPrior <- c(30, 30)
+tau2Prior <- rep(sd(x),nComp) # Prior std theta
+sigma2_0 <- rep(var(x),nComp) # s20 (best guess of sigma2)
+nu0 <- rep(4,nComp) # degrees of freedom for prior on sigma2
+
+
+# MCMC options
+nIter <- 1000 # Number of Gibbs sampling draws
+
+# Plotting options
+plotFit <- FALSE
+lineColors <- c("blue", "green", "magenta", 'yellow')
+sleepTime <- 0.000000001 # Adding sleep time between iterations for plotting
+################   END USER INPUT ###############
+
+###### Defining a function that simulates from the 
+rScaledInvChi2 <- function(n, df, scale){
+  return((df*scale)/rchisq(n,df=df))
+}
+
+####### Defining a function that simulates from a Dirichlet distribution
+rDirichlet <- function(param){
+  nCat <- length(param)
+  thetaDraws <- matrix(NA,nCat,1)
+  for (j in 1:nCat){
+    thetaDraws[j] <- rgamma(1,param[j],1)
+  }
+  thetaDraws = thetaDraws/sum(thetaDraws) # Diving every column of ThetaDraws by the sum of the elements in that column.
+  return(thetaDraws)
+}
+
+# Simple function that converts between two different representations of the mixture allocation
+S2alloc <- function(S){
+  n <- dim(S)[1]
+  alloc <- rep(0,n)
+  for (i in 1:n){
+    alloc[i] <- which(S[i,] == 1)
+  }
+  return(alloc)
+}
+
+# Initial value for the MCMC
+nObs <- length(x)
+S <- t(rmultinom(nObs, size = 1 , prob = rep(1/nComp,nComp))) # nObs-by-nComp matrix with component allocations.
+theta <- quantile(x, probs = seq(0,1,length = nComp))
+sigma2 <- rep(var(x),nComp)
+probObsInComp <- rep(NA, nComp)
+
+# Setting up the plot
+xGrid <- seq(min(x)-1*apply(x,2,sd),max(x)+1*apply(x,2,sd),length = 100)
+xGridMin <- min(xGrid)
+xGridMax <- max(xGrid)
+mixDensMean <- rep(0,length(xGrid))
+effIterCount <- 0
+ylim <- c(0,2*max(hist(x)$density))
+
+simulations <- data.frame(w_1 = 0, w_2 = 0, mu_1 = 0, mu_2 = 0)
+
+for (k in 1:nIter){
+  message(paste('Iteration number:',k))
+  alloc <- S2alloc(S) # Just a function that converts between different representations of the group allocations
+  nAlloc <- colSums(S)
+  print(nAlloc)
+  # Update components probabilities
+  w <- rDirichlet(alpha + nAlloc)
+simulations[k,1] <- w[1]
+simulations[k,2] <- w[2]
+  
+  # Update theta's
+  for (j in 1:nComp){
+    precPrior <- 1/tau2Prior[j]
+    precData <- nAlloc[j]/sigma2[j]
+    precPost <- precPrior + precData
+    wPrior <- precPrior/precPost
+    muPost <- wPrior*muPrior + (1-wPrior)*mean(x[alloc == j])
+    tau2Post <- 1/precPost
+    theta[j] <- rnorm(1, mean = muPost, sd = sqrt(tau2Post))
+  }
+simulations[k,3] <- theta[1]
+simulations[k,4] <- theta[2]  
+simulations$Expected[k] <- sum(simulations$w_1[k] * simulations$mu_1[k] + 
+                                 simulations$w_2[k] * simulations$mu_2[k])
+  # Update sigma2's
+  for (j in 1:nComp){
+    sigma2[j] <- rScaledInvChi2(1, df = nu0[j] + nAlloc[j], scale = (nu0[j]*sigma2_0[j] + sum((x[alloc == j] - theta[j])^2))/(nu0[j] + nAlloc[j]))
+  }
+  
+  # Update allocation
+  for (i in 1:nObs){
+    for (j in 1:nComp){
+      probObsInComp[j] <- w[j]*dnorm(x[i], mean = theta[j], sd = sqrt(sigma2[j]))
+    }
+    S[i,] <- t(rmultinom(1, size = 1 , prob = probObsInComp/sum(probObsInComp)))
+  }
+  
+  # Printing the fitted density against data histogram
+  if (plotFit && (k%%1 ==0)){
+    effIterCount <- effIterCount + 1
+    #hist(x, breaks = 20, freq = FALSE, xlim = c(xGridMin,xGridMax), main = paste("Iteration number",k), ylim = ylim)
+    mixDens <- rep(0,length(xGrid))
+    components <- c()
+    for (j in 1:nComp){
+      compDens <- dnorm(xGrid,theta[j],sd = sqrt(sigma2[j]))
+      mixDens <- mixDens + w[j]*compDens
+      lines(xGrid, compDens, type = "l", lwd = 2, col = lineColors[j])
+      components[j] <- paste("Component ",j)
+    }
+    mixDensMean <- ((effIterCount-1)*mixDensMean + mixDens)/effIterCount
+    
+    lines(xGrid, mixDens, type = "l", lty = 2, lwd = 3, col = 'red')
+    legend("topright", box.lty = 1, legend = c("Data histogram",components, 'Mixture'), 
+           col = c("black",lineColors[1:nComp], 'red'), lwd = 2)
+    Sys.sleep(sleepTime)
+  }
+}
+```
+
+
+
+# Assignment 2 - Binary regression models
+
+## a)
+
+
+## b)
+
+
+## c)
+
+## d)

@@ -1,0 +1,114 @@
+---
+title: "Lab 2"
+author: "Gustav Sternelöv"
+date: "18 april 2016"
+output: pdf_document
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(gtools)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+```
+
+
+# Assignment 2 - Linear and polynomial regression
+## a-b)
+To get some information about what values that can be reasonable to use as priors is a quadratic model using plain least squares fitted. A summary of the results from this model is shown in the output below:
+```{r, echo=FALSE}
+JapanTemp <- read.delim("C:/Users/Gustav/Documents/Machine-Learning/Lab 6/JapanTemp.dat", sep="", header = TRUE)
+ClassicLM <- lm(temp ~ time+ I(time^2), data=JapanTemp)
+summary(ClassicLM)
+```
+
+By using the results from above the prior $\beta$ vector is set to (11.58,58,-50) and the $\sigma^2_0$ prior is set to 122.82, the average sum of squares with  11.58 as the mean value. 
+Regarding the degrees of freedom and the $\Omega_0$ hyperparameter are more of a trial and error approach applied. First they are set to 1 and 1, which together with the values of the other hyperparameters gave the following results. 
+```{r, echo=FALSE, fig.width=8, fig.height=4, message=FALSE, warning=FALSE}
+library(geoR)
+library(mvtnorm)
+regLine <- data.frame(matrix(vector(), 365, 100)) 
+set.seed(311015)
+for(i in 1:100){
+  sigma0 <- rinvchisq(1, df = 1, scale = 122.82)
+  priorCoef <- rmvnorm(n=1, mean = c(11.58,58,-50), sigma = diag(x=sigma0/5, 3, 3))
+  regLine[,i] <- priorCoef[1] + priorCoef[2] * JapanTemp$time + priorCoef[3] * JapanTemp$time^2
+}
+require(reshape2)
+regLine_m <- melt(regLine)
+regLine_m$x <- rep(1:365, 100)
+ggplot()+geom_line(data=regLine_m,aes(x=x,y=value,group=variable),col="royalblue") +  geom_line(data=data.frame(y=ClassicLM$fitted.values), aes(y=y,x=1:365),
+            col="indianred", size=1.25) + theme_bw() +
+  geom_point(data=JapanTemp,aes(x=1:365, y=temp),col="indianred", size=3)+
+  ggtitle("Regression curves for the prior distribution, \n red dots are observed values") + xlab("Day of year") + ylab("Temperature")
+```
+100 draws are made from the joint prior of all parameters and for each draw is a regression curve computed. As can be seen above are the regression curves given by the prior not so well fitted to data and in many cases quite far off the temperatures that can be expected. Hence, the prior hyperparameters $v_0$ and $\Omega_0$ needs to be given other, more sensible, values. This is done by testing some different values for the respective parameters and it is concluded that $v_0$ equal to 10 and $\Omega_0$ equal to 30 gives a reasonable prior distribution.
+```{r, echo=FALSE, fig.width=8, fig.height=4, message=FALSE, warning=FALSE}
+regLine <- data.frame(matrix(vector(), 365, 100)) 
+set.seed(311015)
+for(i in 1:100){
+  sigma0 <- rinvchisq(1, df = 10, scale = 122.82)
+  priorCoef <- rmvnorm(n=1, mean = c(11.58,58,-50), sigma = diag(x=sigma0/30, 3, 3))
+  regLine[,i] <- priorCoef[1] + priorCoef[2] * JapanTemp$time + priorCoef[3] * JapanTemp$time^2
+}
+regLine_m <- melt(regLine)
+regLine_m$x <- rep(1:365, 100)
+ggplot()+geom_line(data=regLine_m,aes(x=x,y=value,group=variable),col="royalblue") + geom_line(data=data.frame(y=ClassicLM$fitted.values), aes(y=y,x=1:365),
+            col="indianred", size=1.25) + theme_bw() +
+  geom_point(data=JapanTemp,aes(x=1:365, y=temp),col="indianred", size=3)+
+  ggtitle("Regression curves for the prior distribution, \n red dots are observed values") + xlab("Day of year") + ylab("Temperature")
+```
+The regression curves obtained from the updated prior distribution are thought to be reasonable since they rather well agrees with our prior belief.  
+
+## c)
+The joint posterior distriubtion for the $\beta_0$, $\beta_1$, $\beta_2$ and $\sigma^2$ is derived and then simulations are generated from it. 250 draws are simulated from the posterior distribution and the obtained regression curves are plotted in the graph below.  
+```{r, echo=FALSE, fig.width=8, fig.height=4, message=FALSE, warning=FALSE}
+X <- as.matrix(data.frame(int=rep(1, 365), x=JapanTemp$time,x2=JapanTemp$time^2))
+omega0 <- diag(x=30, 3,3)
+beta0 <- (as.matrix(c(11.58,58,-50)))
+v0 <- 10
+s0 <- 122.82
+betaHat <- solve(t(X)%*%X) %*%
+  t(X) %*% JapanTemp[,2]
+omegaNew <- t(X)%*%X + omega0
+betaNew <- (solve(t(X)%*%X + omega0)) %*% 
+  ((t(X)%*%X%*%betaHat)+(omega0%*%beta0)) 
+vNew <- v0 + nrow(JapanTemp)
+vNew_sNew <- v0*s0 + t(JapanTemp[,2])%*%JapanTemp[,2] +
+  t(beta0)%*%omega0%*%(beta0)- t(betaNew)%*%omegaNew%*%(betaNew)
+sNew <- vNew_sNew/vNew
+PosteriorLine <- data.frame(matrix(vector(), 365, 250))
+PosteriorCoef <- data.frame(matrix(vector(), 250, 3)) 
+set.seed(311015)
+for(i in 1:250){
+  sigma0 <- rinvchisq(1, df = vNew, scale = sNew)
+  PosteriorCoef[i,] <- rmvnorm(n=1, mean = betaNew, sigma = as.numeric(sigma0) * solve(omegaNew))
+  PosteriorLine[,i] <- PosteriorCoef[i,1]+PosteriorCoef[i,2]*JapanTemp$time+PosteriorCoef[i,3]*JapanTemp$time^2
+}
+PosteriorLine_m <- melt(PosteriorLine)
+PosteriorLine_m$x <- rep(1:365, 250)
+ggplot()+geom_line(data=PosteriorLine_m,aes(x=x,y=value,group=variable),col="royalblue") +
+  theme_bw()+geom_point(data=JapanTemp,aes(x=1:365, y=temp),col="indianred", size=3) +
+  ggtitle("Regression curves for the posterior distribution, \n red dots are observed values") + xlab("Day of year") + ylab("Temperature")
+```
+The regression curves obtained by the draws from the joint posterior distribution are thought to be reasonable. In general the curves follows the observed data rather well. The only exception is for the period with highest temperatures where the model consistently underestimates the temperature.
+
+
+## d)
+If the mean temperature is calculated for every day for all the fitted values generated by the 250 regression curves obtained in *d)* it is concluded that day 209 is the day with the highest temperature. 
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+maxTemp <- ddply(PosteriorLine_m,.(x), summarize, EstTemp=mean(value))
+day209 <- filter(PosteriorLine_m, x == 209)
+ggplot(maxTemp, aes(x=x, y=EstTemp)) + geom_line(size=1.5, col="royalblue") +
+  theme_bw() + geom_point(data=JapanTemp,aes(x=1:365, y=temp), col="indianred", size=3) +geom_line(data=day209, aes(y=value, x=x),col="springgreen3", size=1.5)+ xlab("Day of year") + ylab("Temperature")
+```
+
+## e)
+A suitable prior would be one that regulates so that the parameters not overfitts data. That problaby is a prior that regularizes the coefficients in the model quite heavily.  
+
+When the model has polynomials up to order 7 the aim is to regularize the parameters of higher grades. That since models with polynomials of high orders tends to be overfitted  to data.  
+
+The regularization can be accomplished by setting the prior $\beta$ parameters to zero and $\Omega_0$ to a sufficiently high value.The effect of this is that each variable, or coefficient, needs to be important. Otherwise its parameter value will be close to zero and the importance of the parameter low. 
+
+
+
