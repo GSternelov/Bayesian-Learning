@@ -10,12 +10,11 @@ chooseCov <- c(1:16) # Here we choose which covariates to include in the model
 tau <- 10; # Prior scaling factor such that Prior Covariance = (tau^2)*I
 ###########     END USER INPUT    ################
 
-
 # install.packages("mvtnorm") # Loading a package that contains the multivariate normal pdf
 library("mvtnorm") # This command reads the mvtnorm package into R's memory. NOW we can use dmvnorm function.
 
 # Loading data from file
-Data<-read.table("SpamReduced.dat",header=TRUE)  # Spam data from Hastie et al.
+Data<-read.table("Lab3/SpamReduced.dat",header=TRUE)  # Spam data from Hastie et al.
 y <- as.vector(Data[,1]); # Data from the read.table function is a data frame. Let's convert y and X to vector and matrix.
 X <- as.matrix(Data[,2:17]);
 covNames <- names(Data)[2:length(names(Data))];
@@ -72,8 +71,8 @@ approxPostStd <- sqrt(diag(-solve(OptimResults$hessian))) # Computing approximat
 names(approxPostStd) <- covNames # Naming the coefficient by covariates
 print('The posterior mode is:')
 print(OptimResults$par)
-print('The approximate posterior standard deviation is:')
 approxPostStd <- sqrt(diag(-solve(OptimResults$hessian)))
+print('The approximate posterior standard deviation is:')
 print(approxPostStd)
 
 

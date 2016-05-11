@@ -116,7 +116,7 @@ G <- 2*pnorm((sqrt(sigma2)/sqrt(2)))-1
 G_frame <- data.frame(G=G)
 ggplot(G_frame, aes(G)) + geom_histogram(binwidth=0.008, fill="royalblue") + theme_bw() + ggtitle("Histogram for the posterior distribution of the Gini coefficient G")
 ```
-The mean of the histogram above is `r round(mean(G),4)`, which tells us that the income is more inequal than equal. 
+The mean of the histogram above is `r round(mean(G),4)`, which tells us that the income is more equal than inequal. 
 
 \pagebreak
 
@@ -186,7 +186,7 @@ The observed data has had a rather heavy impact on the distribution specified by
 
 # Appendix
 ## R-code
-```{r code=readLines(knitr::purl('C:/Users/Gustav/Documents/Bayesian learning/Lab 1/Computer-lab-1.rmd', documentation = 0)), eval = FALSE}
+```{r code=readLines(knitr::purl('C:/Users/Gustav/Documents/Bayesian-learning/Lab 1/Computer-lab-1.rmd', documentation = 0)), eval = FALSE}
 ```
 
 

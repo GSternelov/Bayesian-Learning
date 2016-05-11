@@ -8,7 +8,7 @@ output: pdf_document
 # Assignment 1 - Normal model, mixture of normal model with semi-conjugate prior.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #### Assignment 1 ####
-rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab 3/rainfall.dat", sep="", header = TRUE)
+rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian-Learning/Lab 3/rainfall.dat", sep="", header = TRUE)
 library(ggplot2)
 library(gridExtra)
 ```
@@ -105,8 +105,9 @@ The prior mean is set to 30, close to the mean for the observations (32.27).
 For the prior on $\sigma^2$ is the degress of freedom set to 4. 
 $\alpha_0$, the prior for the beta distribution, is set (10,10). This is a prior that is used for assigning the probability that a value belong to the distribution. 
 
-```{r, echo=FALSE, results='hide'}
-rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab 3/rainfall.dat",  sep="", header = TRUE)
+```{r, echo=FALSE, results='hide', eval=FALSE}
+rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian-Learning/Lab 3/rainfall.dat",
+                       sep="", header = TRUE)
 x <- as.matrix(rainfall['X136'])
 
 # Model options
@@ -120,11 +121,15 @@ muPrior <- c(30, 30)
 tau2Prior <- rep(sd(x),nComp) # Prior std theta
 sigma2_0 <- rep(var(x),nComp) # s20 (best guess of sigma2)
 nu0 <- rep(4,nComp) # degrees of freedom for prior on sigma2
+
+
 # MCMC options
 nIter <- 1000 # Number of Gibbs sampling draws
 
+
 # Plotting options
-plotFit <- FALSE
+plotFit <- TRUE
+lineColors <- c("blue", "green", "magenta", 'yellow')
 ################   END USER INPUT ###############
 
 ###### Defining a function that simulates from the 
@@ -166,6 +171,7 @@ xGridMin <- min(xGrid)
 xGridMax <- max(xGrid)
 mixDensMean <- rep(0,length(xGrid))
 effIterCount <- 0
+ylim <- c(0,2*max(hist(x,plot = FALSE)$density))
 
 simulations <- data.frame(w_1 = 0, w_2 = 0, mu_1 = 0, mu_2 = 0)
 
@@ -175,8 +181,8 @@ for (k in 1:nIter){
   # Update components probabilities
   w <- rDirichlet(alpha + nAlloc)
 simulations[k,1] <- w[1]
-simulations[k,2] <- w[2]
-  
+simulations[k,2] <- w[2]  
+
   # Update theta's
   for (j in 1:nComp){
     precPrior <- 1/tau2Prior[j]
@@ -207,13 +213,21 @@ simulations$Expected[k] <- sum(simulations$w_1[k] * simulations$mu_1[k] +
   # Printing the fitted density against data histogram
   if (plotFit && (k%%1 ==0)){
     effIterCount <- effIterCount + 1
+    #hist(x, breaks = 20, freq = FALSE, xlim = c(xGridMin,xGridMax), main = paste("Iteration number",k), ylim = ylim)
     mixDens <- rep(0,length(xGrid))
+    components <- c()
     for (j in 1:nComp){
       compDens <- dnorm(xGrid,theta[j],sd = sqrt(sigma2[j]))
       mixDens <- mixDens + w[j]*compDens
+      #lines(xGrid, compDens, type = "l", lwd = 2, col = lineColors[j])
+      components[j] <- paste("Component ",j)
     }
     mixDensMean <- ((effIterCount-1)*mixDensMean + mixDens)/effIterCount
-    }
+    
+    #lines(xGrid, mixDens, type = "l", lty = 2, lwd = 3, col = 'red')
+    #legend("topleft", box.lty = 1, legend = c("Data histogram",components, 'Mixture'), 
+          # col = c("black",lineColors[1:nComp], 'red'), lwd = 2)
+  }
 }
 ```
 
@@ -224,30 +238,30 @@ The resulting distribution given after 1000 iterations is shown by the plot belo
 Picture!
 It can be seen the the mixture of the two normals quite well fits the observed data.
 
-The convergence of the Gibbs sampler is analyzed by looking at a trace plot for the chain given by the mixture of the normals. 
-```{r, echo=FALSE, fig.height=4, fig.width=8}
+The convergence of the Gibbs sampler is analyzed by looking at a trace plot for the chain given by the mixture of the normals.  
+```{r, echo=FALSE, fig.height=4, fig.width=8, eval=FALSE}
 ggplot(simulations, aes(x=1:nrow(simulations), y=Expected)) + geom_line() + theme_bw() + geom_vline(xintercept=75, col="red", size=1.05) + xlab("1:1000") + ylab("Mu") + ggtitle("Trace plot for chain of values from mixture model")
 ```
 Again, it seems like the chain have converged rather rapidly. Just the first 75 observations are discarded because of the burn-in period. Convergence is thought to have been reached since...
 
 The autocorrelation is also visualised in order to investigate the convergence of the chain.  
-```{r, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE}
+```{r, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, eval=FALSE}
 # Looks at efficieny in terms of auto-correlation
 acf_mix <- acf(simulations[76:nrow(simulations),5], lag.max = 25, type = c("correlation"), plot=FALSE)
-acf_mix <- data.frame(ACF=as.numeric(acf_mix$acf), Lag=0:24)
+acf_mix <- data.frame(ACF=as.numeric(acf_mix$acf), Lag=0:25)
 ggplot(acf_mix, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for values from mixture model")
 ```
 The correlation between values from iterations close to each other is low. 
 
 ## c) Graphical comparison.
 
-```{r, echo=FALSE, fig.height=4, fig.width=8}
+```{r, echo=FALSE, fig.height=4, fig.width=8, eval=FALSE}
 ## c)
 a1 <- data.frame(x=rnorm(1000, 32.27564, sqrt(1546.53868)))
 b1 <- data.frame(y=mixDensMean, x=xGrid)
 ggplot(rainfall, aes(X136)) + geom_histogram(aes(y = ..density..),alpha=0.9,
-  fill="black", binwidth=10) + theme_bw() +
-  geom_density(data=a1, aes(x),binwidth=10,col="royalblue", size=1.05) +
+  fill="black") + theme_bw() +
+  geom_density(data=a1, aes(x),col="royalblue", size=1.05) +
   geom_line(data=b1, aes(x=x, y=y), col="red", size=1.05) + 
   ggtitle("Density for Gibbs Sampling and Mixture of normals\n Blue = 1.a) - Red = 1.b)") + xlab("")
 ```

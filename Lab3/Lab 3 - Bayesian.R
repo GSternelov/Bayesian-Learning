@@ -1,6 +1,6 @@
 
 #### Assignment 1 ####
-rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab 3/rainfall.dat",
+rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab3/rainfall.dat",
                        sep="", header = TRUE)
 library(ggplot2)
 library(gridExtra)
@@ -85,8 +85,8 @@ colMeans(sims[101:1000,])
 a1 <- data.frame(x=rnorm(1000, 32.27564, sqrt(1546.53868)))
 b1 <- data.frame(y=mixDensMean, x=xGrid)
 ggplot(rainfall, aes(X136)) + geom_histogram(aes(y = ..density..),alpha=0.9,
-  fill="black", binwidth=10) + theme_bw() +
-  geom_density(data=a1, aes(x),binwidth=10,col="royalblue", size=1.05) +
+  fill="black") + theme_bw() +
+  geom_density(data=a1, aes(x),col="royalblue", size=1.05) +
   geom_line(data=b1, aes(x=x, y=y), col="red", size=1.05) + 
   ggtitle("Density for Gibbs Sampling and Mixture of normals\n Blue = 1.a) - Red = 1.b)") + xlab("")
 

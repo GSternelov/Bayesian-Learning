@@ -21,11 +21,12 @@ y <- c(14,25,45,25,30,33,19,50,34,67)
 sigma2 <- 0
 set.seed(12345)
 for(i in 1:10000){
-  chisq <- rchisq(1, 9)
-  sigma2[i] <- (9 * (sum((log(y)-3.5)^2) / 10)) / chisq
+  chisq <- rchisq(1, 10)
+  sigma2[i] <- (sum((log(y)-3.5)^2)) / chisq
 }
 sigma2_frame <- data.frame(sigma2=sigma2)
 ggplot(sigma2_frame, aes(sigma2)) + geom_histogram(binwidth=0.1, fill="royalblue") + theme_bw() + ggtitle("Histogram for 10 000 values from \n the posterior distribution of sigma^2")
+max(sigma2)
 #mean(sigma2)
 #var(sigma2)
 # theoretical mean
@@ -36,8 +37,7 @@ c(Mean=mean(sigma2))
 c(Variance=var(sigma2))
 c(theoretical_mean=(sum((log(y)-3.5)^2))/(10-2))
 c(theoretical_variance=(2*10^2 * ((sum((log(y)-3.5)^2))/10)^2 ) / (8^2 * 6))
-G <- 2*dnorm((sqrt(sigma2)/sqrt(2))-1)
-mean(G)
+G <- 2*pnorm((sqrt(sigma2)/sqrt(2)))-1
 G_frame <- data.frame(G=G)
 ggplot(G_frame, aes(G)) + geom_histogram(binwidth=0.008, fill="royalblue") + theme_bw() + ggtitle("Histogram for the posterior distribution of the Gini coefficient G")
 # a)
@@ -64,4 +64,4 @@ ysum <- sum(120342 + 235967 + 243745 + 197452 + 276935 + 157222) / 100000
 prior <- data.frame(x=seq(0,10, 0.01), y=dgamma(seq(0, 10, by=0.01), 4*1.81, 1.81))
 posterior <- data.frame(x=seq(0,10, 0.01),y=dgamma(seq(0, 10, by=0.01), 4*1.81 + 19, 1.81 + 12.31663))
 ggplot(prior, aes(x=x, y=y)) + geom_line(col="royalblue", size=1.3) + ylim(0,1.2) + geom_line(data=posterior, aes(x=x, y=y), col="darkorange", size=1.3) + theme_bw() + ggtitle("Probability density functions \n Prior(blue) compared to Posterior(orange)") + xlab("lambda")
-
+## NA

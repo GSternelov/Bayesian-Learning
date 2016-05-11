@@ -1,5 +1,5 @@
 
-rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab 3/rainfall.dat",
+rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian Learning/Lab3/rainfall.dat",
                        sep="", header = TRUE)
 x <- as.matrix(rainfall['X136'])
 
@@ -20,7 +20,7 @@ nu0 <- rep(4,nComp) # degrees of freedom for prior on sigma2
 nIter <- 20 # Number of Gibbs sampling draws
 
 # Plotting options
-plotFit <- FALSE
+plotFit <- TRUE
 lineColors <- c("blue", "green", "magenta", 'yellow')
 ################   END USER INPUT ###############
 
