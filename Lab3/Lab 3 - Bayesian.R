@@ -91,45 +91,29 @@ ggplot(rainfall, aes(X136)) + geom_histogram(aes(y = ..density..),alpha=0.9,
   ggtitle("Density for Gibbs Sampling and Mixture of normals\n Blue = 1.a) - Red = 1.b)") + xlab("")
 
 #### Assignment 2 ####
-
 # b-c)
 library(msm)
-?rtnorm
+library(mvtnorm)
 
 tau <- 10
 mu <- as.vector(rep(0,nPara)) # Prior mean vector
 Sigma <- tau^2*diag(nPara)
 nPara <- dim(X)[2]
 
-rtnorm(16, mean=as.vector(rep(0,nPara)), sqrt(10))
-
-library(mvtnorm)
-initVal <- as.vector(rep(0,dim(X)[2]))
-
-set.seed(1234)
-initval <- as.vector(rmvnorm(n=1, mean = initVal, sigma = diag(x=tau^2, 16, 16)))
-
 mean_p <- t(as.matrix(as.vector(rep(0,dim(X)[2])), ncol=1))
 sigma_p <- diag(x=tau^2, 16, 16)
 sigma_p2 <- ( as.matrix(diag(sigma_p)))
-
-#B_n <- solve(t(X)%*%X + sigma_p2%*%mean_p) %*% t(X)%*%y
-#mean_p <- t(as.matrix(B_n))
-#sigma_p <- solve(t(X)%*%X + sigma_p)
-#sigma_p2 <- ( as.matrix(diag(sigma_p)))
-
-rmvnorm(1, mean_p, sigma_p)
 
 emptyB <- data.frame(matrix(vector(), 101, 16))
 u <- data.frame(matrix(vector(), 4601, 101))
 set.seed(311015)
 u[,1] <- rtnorm(4601, X%*%t(mean_p), sd = rep(1, 16)) 
 
-for (i in 1:101){
+for (i in 1:100){
   B_n <- solve(t(X)%*%X + sigma_p2%*%mean_p) %*% t(X)%*%u[,i]
   mean_p <- t(as.matrix(B_n))
-  sigma_p <- solve(t(X)%*%X + sigma_p)
-  sigma_p2 <- ( as.matrix(diag(sigma_p)))
+  sigma_p <- solve(t(X)%*%X + sigma_p) 
+  sigma_p2 <- ( as.matrix(diag(sigma_p))) #same as sigma_p, just modified format
   
   emptyB[i,] <-  rmvnorm(1, mean_p, sigma_p)
   newB <- t(matrix(as.numeric(emptyB[i,])))
@@ -143,8 +127,11 @@ for (i in 1:101){
   }
 }
 
-
 Betas <- matrix(as.numeric(emptyB[20,]))
+options(scipen = 999)
+Res <- data.frame(covs=names(OptimResults$par),OptimBeta = as.numeric(OptimResults$par),
+   GibbsBeta=as.numeric(emptyB[20,]), OptimStd = sqrt(diag(-solve(OptimResults$hessian))),
+   GibbsStd=sqrt(sigma_p2))
 
 y_fit <- (X) %*% Betas
 for(i in 1:4601){
@@ -166,6 +153,3 @@ for(i in 1:4601){
   }
 }
 table(y,y_fitOptim)
-
-
-

@@ -1,7 +1,7 @@
 ---
-title: "Lab 3"
-author: "Gustav Sternelöv"
-date: "3 maj 2016"
+title: "Bayesian Learning - Lab 3"
+author: "Kevin Neville, Gustav Sternelöv"
+date: "May, 3rd, 2016"
 output: pdf_document
 ---
 
@@ -11,6 +11,7 @@ output: pdf_document
 rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian-Learning/Lab3/rainfall.dat", sep="", header = TRUE)
 library(ggplot2)
 library(gridExtra)
+library(coda)
 ```
 ## a) Normal model.
 
@@ -64,27 +65,27 @@ The code used to implement the Gibbs sampler that simulates from the joint poste
 The Gibbs sampler from *i)* is tested and it is of interest to investigate the convergence of the chains and if the sampler is efficient. One way to check this is by looking at trace plots and auto-correlation plots.  
 ```{r, echo=FALSE, fig.height=4, fig.width=8}
 #trace plots - with burn-in!
-tr_w_burn <- ggplot(sims, aes(x=1:nrow(sims), y=mu)) + geom_line() + theme_bw() + xlab("1:1000") + ylab("Mu") + ggtitle("Gibbs Sampling - Trace Plot - Mu") + geom_vline(xintercept=50, col="red", size=1.05)
+tr_w_burn <- ggplot(sims, aes(x=1:nrow(sims), y=mu)) + geom_line() + theme_bw() + xlab("1:1000") + ylab("Mu") + ggtitle("Gibbs Sampling - Trace Plot - Mu") + geom_vline(xintercept=100, col="red", size=1.05)
 tr_w_burn2 <- ggplot(sims, aes(x=1:nrow(sims), y=sigma2)) + geom_line() +
-  theme_bw() +ggtitle("Gibbs Sampling - Trace Plot - Sigma^2")+ xlab("1:1000") + geom_vline(xintercept=50, col="red", size=1.05)
+  theme_bw() +ggtitle("Gibbs Sampling - Trace Plot - Sigma^2")+ xlab("1:1000") + geom_vline(xintercept=100, col="red", size=1.05)
 grid.arrange(tr_w_burn, tr_w_burn2, ncol=2)
 ```
-By the look of the plots above it seems like the chain has converged for both $\mu$ and $\sigma^2$. The chains converges quickly and if there is a burn-in period, it is thought to be short. Out of the 1000 iterations, perhaps 75 iterations in both cases can be classified as belonging to the burn-in period. Even though it is hard to see a specific burn-in period it is reasonable to make the assumption that some proportion of the first iterations not have converged and should be discarded. 
+By the look of the plots above it seems like the chain has converged for both $\mu$ and $\sigma^2$. The chains converges quickly and if there is a burn-in period, it is thought to be short. Out of the 1000 iterations, perhaps 10 % of the iterations in both cases can be classified as belonging to the burn-in period. Even though it is hard to see a specific burn-in period it is reasonable to make the assumption that some proportion of the first iterations not have converged and should be discarded. 
 
-The chains are thought to have converged since they have settled rather well and have a good mixing. By mixing we mean that the chains not are following any clear pattern, the values looks to be random and quite uncorrelated to the upcoming values.
+The chains are thought to have converged since they have settled rather well and appears to have a random pattern throughout the whole chain.
 
 How the chains looks with the burn-in period discarded is shown by the trace plots below.  
 ```{r, echo=FALSE, fig.height=4, fig.width=8}
-tr_wh_burn <- ggplot(sims[76:1000,], aes(x=76:nrow(sims), y=mu)) + geom_line() + theme_bw() + xlab("1:1000") + ylab("Mu") + ggtitle("Gibbs Sampling - Trace Plot - Mu\n Without burn-in")
-tr_wh_burn2 <- ggplot(sims[76:1000,], aes(x=76:nrow(sims), y=sigma2)) + geom_line() + theme_bw() + ggtitle("Gibbs Sampling - Trace Plot - Sigma^2\n Without burn-in") + xlab("1:1000")
+tr_wh_burn <- ggplot(sims[101:1000,], aes(x=101:nrow(sims), y=mu)) + geom_line() + theme_bw() + xlab("101:1000") + ylab("Mu") + ggtitle("Gibbs Sampling - Trace Plot - Mu\n Without burn-in")
+tr_wh_burn2 <- ggplot(sims[101:1000,], aes(x=101:nrow(sims), y=sigma2)) + geom_line() + theme_bw() + ggtitle("Gibbs Sampling - Trace Plot - Sigma^2\n Without burn-in") + xlab("101:1000")
 grid.arrange(tr_wh_burn, tr_wh_burn2, ncol=2)
 ```
 
-In the comments above about the trace plots we mentioned that the values seem to rather uncorrelated, the correlation between one value and the next upcoming values seem to be low. This is investigated more closely by looking at the autocorrelation of the chains with the burn-in removed.  
+In the comments above about the trace plots we mentioned that the values seem to be rather uncorrelated, that the correlation between one value and the next values seem to be low. This is investigated more closely by looking at the auto-correlation of the chains with the burn-in period removed.  
 ```{r, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE}
 # Looks at efficieny in terms of auto-correlation
-acf_m <- acf(sims[76:1000,1], lag.max = 25, type = c("correlation"), plot=FALSE)
-acf_s <- acf(sims[76:1000,2], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_m <- acf(sims[101:1000,1], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_s <- acf(sims[101:1000,2], lag.max = 25, type = c("correlation"), plot=FALSE)
 acf_m <- data.frame(ACF=as.numeric(acf_m$acf), Lag=0:25)
 acf_s <- data.frame(ACF=as.numeric(acf_s$acf), Lag=0:25)
 acf_mu <- ggplot(acf_m, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for chain - Mu")
@@ -98,15 +99,18 @@ As we thought, the generated values from the Gibbs sampler do not have a strong 
 ### i)
 Mattias's code is used for this assignment and added to the appendix at the end of the report. The values for the prior hyperparameters are presented below.  
 
-We use the standard deviation for the observations to assign the prior standard deviation for $\mu$.  
-The variance of the observations is used for $\sigma^2_0$.  
-The prior mean is set to 30, close to the mean for the observations (32.27).  
-For the prior on $\sigma^2$ is the degress of freedom set to 4.  
-$\alpha_0$, the prior for the beta distribution, is set (10,10). This is a prior that is used for assigning the probability that a value belong to the distribution. 
+The priors for the two components, are set as following:
+
+ *  $\alpha_0$ = 10,10  
+ *  $\mu_0$ = Mean of x, i.e 32.2681.  
+ *  $\tau^2_0$ = 10,10  
+ *  $\sigma^2_0$ = Is set to the variance of x, i.e 1545.771.  
+ *  Degrees of freedom = 4  
+
 
 Some different priors were tested and the values presented above seemed to be the most suitable ones. 
 
-```{r, echo=FALSE, results='hide', eval=FALSE}
+```{r, echo=FALSE, results='hide', eval=TRUE}
 rainfall <- read.delim("C:/Users/Gustav/Documents/Bayesian-Learning/Lab3/rainfall.dat",
                        sep="", header = TRUE)
 x <- as.matrix(rainfall['X136'])
@@ -115,11 +119,9 @@ x <- as.matrix(rainfall['X136'])
 nComp <- 2    # Number of mixture components
 
 # Prior options
-alpha <- 10*rep(1,nComp) # Dirichlet(alpha)
 alpha <- c(10, 10)
-muPrior <- rep(0,nComp) # Prior mean of theta
-muPrior <- c(30, 30)
-tau2Prior <- rep(sd(x),nComp) # Prior std theta
+muPrior <- c(32.2681, 32.2681)
+tau2Prior <- rep(10,nComp) # Prior std theta
 sigma2_0 <- rep(var(x),nComp) # s20 (best guess of sigma2)
 nu0 <- rep(4,nComp) # degrees of freedom for prior on sigma2
 
@@ -174,7 +176,7 @@ mixDensMean <- rep(0,length(xGrid))
 effIterCount <- 0
 ylim <- c(0,2*max(hist(x,plot = FALSE)$density))
 
-simulations <- data.frame(w_1 = 0, w_2 = 0, mu_1 = 0, mu_2 = 0)
+simulations <- data.frame(w_1 = 0, w_2 = 0, mu_1 = 0, mu_2 = 0, sigma1=0, sigma2=0)
 
 for (k in 1:nIter){
   alloc <- S2alloc(S) # Just a function that converts between different representations of the group allocations
@@ -202,7 +204,8 @@ simulations$Expected[k] <- sum(simulations$w_1[k] * simulations$mu_1[k] +
   for (j in 1:nComp){
     sigma2[j] <- rScaledInvChi2(1, df = nu0[j] + nAlloc[j], scale = (nu0[j]*sigma2_0[j] + sum((x[alloc == j] - theta[j])^2))/(nu0[j] + nAlloc[j]))
   }
-  
+simulations[k,5] <- sigma2[1]
+simulations[k,6] <- sigma2[2]
   # Update allocation
   for (i in 1:nObs){
     for (j in 1:nComp){
@@ -241,47 +244,89 @@ The resulting distribution given for both the normals and the mixture of the nor
 It can be seen the the mixture of the two normals quite well fits the observed data.
 
 The convergence and efficiency of the Gibbs sampler is analyzed by looking at a trace plot for the chain of $\mu$ values given by the mixture of the normals.  
-```{r, echo=FALSE, fig.height=4, fig.width=8, eval=FALSE}
-Wh_b <- ggplot(simulations, aes(x=1:nrow(simulations), y=Expected)) + geom_line() + theme_bw() + geom_vline(xintercept=75, col="red", size=1.05) + xlab("1:1000") + ylab("Mu") + ggtitle("Trace plot for chain of values from the\n mixture model")
-Wh_o_b <- ggplot(simulations[76:nrow(simulations),], aes(x=76:nrow(simulations), y=Expected)) + geom_line() + theme_bw() + xlab("1:1000") + ylab("Mu") + ggtitle("Trace plot for chain of values from the\n mixture model (without burn-in)")
+```{r, echo=FALSE, fig.height=4, fig.width=8, eval=TRUE}
+Wh_b <- ggplot(simulations, aes(x=1:nrow(simulations), y=Expected)) + geom_line() + theme_bw() + geom_vline(xintercept=100, col="red", size=1.05) + xlab("1:1000") + ylab("Mu") + ggtitle("Trace plot for chain of values from the\n mixture model")
+Wh_o_b <- ggplot(simulations[101:nrow(simulations),], aes(x=101:nrow(simulations), y=Expected)) + geom_line() + theme_bw() + xlab("101:1000") + ylab("Mu") + ggtitle("Trace plot for chain of values from the\n mixture model (without burn-in)")
 grid.arrange(Wh_b, Wh_o_b, ncol=2)
 ```
-Again, it seems like the chain have converged rather rapidly. It settles quickly and the generated values does not get stuck nor follow any clear pattern. Looking at the burn-in period it is concluded that it probably is rather short. Hence, just the first 75 observations are discarded because of the burn-in period.
+Again, it seems like the chain have converged rather rapidly. It settles quickly and the generated values does not get stuck nor follow any clear pattern. Looking at the burn-in period it is concluded that it probably is rather short. Hence, just the first 100 (10 %) observations are discarded because of the burn-in period.
 
 The autocorrelation is also visualised in order to investigate the convergence and efficiency of the chain.  
-```{r, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, eval=FALSE}
+```{r, echo=FALSE, fig.height=4, fig.width=8, warning=FALSE, eval=TRUE}
 # Looks at efficieny in terms of auto-correlation
-acf_mix <- acf(simulations[76:nrow(simulations),5], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_mix <- acf(simulations[101:nrow(simulations),7], lag.max = 25, type = c("correlation"), plot=FALSE)
 acf_mix <- data.frame(ACF=as.numeric(acf_mix$acf), Lag=0:25)
 ggplot(acf_mix, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for values from mixture model")
 ```
-The correlation between values from iterations close to each other is low which speaks in favor of the efficiency of the sampler.  
+The correlation between values from iterations close to each other is low which speaks in favor of the efficiency of the sampler. 
+
+So far so good, but we shall also look at the other parameters that have been sampled in the mixture model. The trace plots for $\mu_1$, $\mu_2$, $W_1$, $W_2$, $\sigma_1$ and $\sigma_2$ are presented below.  
+```{r, echo=FALSE, fig.height=6, fig.width=8, warning=FALSE, eval=TRUE}
+mu1_b <- ggplot(simulations, aes(x=1:1000, y=mu_1)) + geom_line() + theme_bw() + ggtitle("Trace plot for mu_1")
+mu2_b <- ggplot(simulations, aes(x=1:1000, y=mu_2)) + geom_line() + theme_bw()+ ggtitle("Trace plot for mu_2")
+w1_b <- ggplot(simulations, aes(x=1:1000, y=w_1)) + geom_line() + theme_bw()+ ggtitle("Trace plot for w_1")
+w2_b <- ggplot(simulations, aes(x=1:1000, y=w_2)) + geom_line() + theme_bw()+ ggtitle("Trace plot for w_2")
+sigma1_b <- ggplot(simulations, aes(x=1:1000, y=sigma1)) + geom_line() + theme_bw()+ ggtitle("Trace plot for sigma_1")
+sigma2_b <- ggplot(simulations, aes(x=1:1000, y=sigma2)) + geom_line() + theme_bw()+ ggtitle("Trace plot for sigma_2")
+grid.arrange(mu1_b, mu2_b,w1_b,w2_b,sigma1_b,sigma2_b, ncol=2)
+```
+
+The trace plots appears to indicate that all the chains except the ones for *w_1* and *w_2* have converged. 
+
+We also investigate the convergence and efficiency of the parameters by the auto-correlation of the respective chains.  
+```{r, echo=FALSE, fig.height=6, fig.width=8, warning=FALSE, eval=TRUE}
+# Autocorrelation plots for the other parameters
+acf_mu1 <- acf(simulations[101:1000,3], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_mu2 <- acf(simulations[101:1000,4], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_w1 <- acf(simulations[101:1000,1], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_w2 <- acf(simulations[101:1000,2], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_s1 <- acf(simulations[101:1000,5], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_s2 <- acf(simulations[101:1000,6], lag.max = 25, type = c("correlation"), plot=FALSE)
+acf_mu1 <- data.frame(ACF=as.numeric(acf_mu1$acf), Lag=0:25)
+acf_mu2 <- data.frame(ACF=as.numeric(acf_mu2$acf), Lag=0:25)
+acf_w1 <- data.frame(ACF=as.numeric(acf_w1$acf), Lag=0:25)
+acf_w2 <- data.frame(ACF=as.numeric(acf_w2$acf), Lag=0:25)
+acf_s1 <- data.frame(ACF=as.numeric(acf_s1$acf), Lag=0:25)
+acf_s2 <- data.frame(ACF=as.numeric(acf_s2$acf), Lag=0:25)
+
+acf_mu1 <- ggplot(acf_mu1, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for chain - Mu_1")
+acf_mu2 <- ggplot(acf_mu2, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw()+ ggtitle("Auto-correlation for chain - Mu_2")
+acf_w1 <- ggplot(acf_w1, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw()+ ggtitle("Auto-correlation for chain - W_1")
+acf_w2 <- ggplot(acf_w2, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw()+ ggtitle("Auto-correlation for chain - W_2")
+acf_s1 <- ggplot(acf_s1, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw()+ ggtitle("Auto-correlation for chain - Sigma_1")
+acf_s2 <- ggplot(acf_s2, aes(x=Lag, y=ACF))+geom_bar(stat="identity", fill="black")+theme_bw() + ggtitle("Auto-correlation for chain - Sigma_2")
+grid.arrange(acf_mu1, acf_mu2,acf_w1,acf_w2,acf_s1,acf_s2,ncol=2)
+
+```
+
+Compared to the sampler in *a)* it is evident that this sampler is less efficient. All parameters except sigma_1 have a high auto-correlation in their chains.
+
 
 ## c) Graphical comparison.
 
-```{r, echo=FALSE, fig.height=4, fig.width=8, eval=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, fig.height=4, fig.width=8, eval=TRUE, warning=FALSE, message=FALSE}
 ## c)
 a1 <- data.frame(x=rnorm(1000, 32.27564, sqrt(1546.53868)))
 b1 <- data.frame(y=mixDensMean, x=xGrid)
 ggplot(rainfall, aes(X136)) + geom_histogram(aes(y = ..density..),alpha=0.9,
-  fill="black") + theme_bw() +
+  fill="black", binwidth=8) + theme_bw() +
   geom_density(data=a1, aes(x),col="royalblue", size=1.05) +
   geom_line(data=b1, aes(x=x, y=y), col="red", size=1.05) + 
   ggtitle("Density for normal model and mixture of normals\n Blue = 1.a) - Red = 1.b)") + xlab("")
 ```
 
 With no doubt, the mixture of normals model from *b)* is better in terms of fitting. 
+The normal density is poorly fitted to the data, and even has a large probability mass for negative values. The mixture model also has some probability for negative values, but not as much as the normal model. The mixture model is also much better fitted to the observed values. 
 
 
 
 # Assignment 2 - Binary regression models
 
 ## a-d)
-The code *OptimizeSpamR* is used to analyze the spam data set. A data augmentation Gibbs sampler is also implemented and the code for both methods can be seen in the appendix at the end of the report.  
+The code *OptimizeSpamR* is used to analyze the spam data set. A data augmentation Gibbs sampler is also implemented and the code for both methods can be seen in the appendix at the end of the report.
 
-The results for the respective method for both methods are compared against eacho other. First we look at the coefficients for the beta parameters and their standard deviation.
-
-```{r, echo=FALSE}
+Only 100 draws are made with the Gibbs sampler since it take lots of time to run the sampler. The convergence for the $\beta$ parameters is investigated with trace plots.  
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8}
 ###########   BEGIN USER INPUTS   ################
 Probit <- 1 # If Probit <-0, then logistic model is used.
 chooseCov <- c(1:16) # Here we choose which covariates to include in the model
@@ -355,8 +400,8 @@ mean_p <- t(as.matrix(as.vector(rep(0,dim(X)[2])), ncol=1))
 sigma_p <- diag(x=tau^2, 16, 16)
 sigma_p2 <- ( as.matrix(diag(sigma_p)))
 
-emptyB <- data.frame(matrix(vector(), 101, 16))
-u <- data.frame(matrix(vector(), 4601, 101))
+emptyB <- data.frame(matrix(vector(), 100, 16))
+u <- data.frame(matrix(vector(), 4601, 100))
 set.seed(311015)
 u[,1] <- rtnorm(4601, X%*%t(mean_p), sd = rep(1, 16)) 
 
@@ -377,28 +422,41 @@ for (i in 1:100){
     }
   }
 }
+par(mfrow=c(3,2))
+for(i in 1:16){
+  plot(emptyB[,i], type="l")
+}
+```
+For all the trace plots it seems like the parameters have converged, even though the sample size is small. The effective sample size for the respective parameters is computed and it can be seen that the sampler is really effective.
+```{r, echo=FALSE}
+effectiveSize(emptyB)
+```
 
+
+The results for the respective method for both methods are compared against each other. First we look at the coefficients for the beta parameters and their standard deviation.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 Betas <- matrix(as.numeric(emptyB[100,]))
 options(scipen = 999)
-Res <- data.frame(covs=covNames,OptimBeta = as.numeric(OptimResults$par), GibbsBeta=as.numeric(emptyB[100,]), OptimStd = sqrt(diag(-solve(OptimResults$hessian))), GibbsStd=sqrt(sigma_p2))
+Res <- data.frame(covs=covNames,OptimBeta = as.numeric(OptimResults$par), GibbsBeta=as.numeric(emptyB[100,]), OptimStd = sqrt(diag(-solve(OptimResults$hessian))), GibbsStd=sqrt(sigma_p2),row.names = NULL)
 Res
 ```
 
-For both the Optim and the Gibbs is the sign the same for all parameters. The beta parameters given by the Optim method has in general higher vales compared to those from the Gibbs sampler. Regarding the standard deviations so are these lower for the Gibbs sampler so they seem to be more precise, but perhaps this also is an effect of the Gibbs coefficients havning lower values.   
+For both the Optim and the Gibbs is the sign the same for all parameters. The beta parameters given by the Optim method has in general higher vales compared to those from the Gibbs sampler. The standard deviations are lower for the Gibbs sampler so they seem to be more precise, but perhaps this also is an effect of the Gibbs coefficients havning lower values.   
 
-We also compare the results by looking at confusion matrices for the Optim and the Gibbs sampler. 
+We also compare the results by looking at confusion matrices for the Gibbs sampler and the optimizer.  
 ```{r, echo=FALSE, eval=TRUE}
-Betas <- matrix(as.numeric(emptyB[20,]))
+Betas <- matrix(as.numeric(emptyB[100,]))
 
-y_fit <- (X) %*% Betas
+y_fitGibbs <- (X) %*% Betas
 for(i in 1:4601){
-  if(y_fit[i] > 0){
-    y_fit[i] = 1
+  if(y_fitGibbs[i] > 0){
+    y_fitGibbs[i] = 1
   }else{
-    y_fit[i] = 0
+    y_fitGibbs[i] = 0
   }
 }
-table(y,y_fit)
+table(y,y_fitGibbs)
 
 betasOptim <- matrix(as.numeric(OptimResults$par))
 y_fitOptim <- (X) %*% betasOptim
@@ -412,4 +470,12 @@ for(i in 1:4601){
 table(y,y_fitOptim)
 ```
 
+The misclassification rate for the Gibbs sampler is $`r 1 - sum(diag( table(y,y_fitGibbs))) / sum(table(y,y_fitGibbs))`$ and for the optimizer $`r 1 - sum(diag( table(y,y_fitOptim))) / sum(table(y,y_fitOptim))`$. For both methods is the misclassification rather low but of the two does the optimizer seem to perform slightly better than the Gibbs sampler. 
+
+\pagebreak
+
+# Appendix
+## R-code
+```{r code=readLines(knitr::purl('C:/Users/Gustav/Documents/Bayesian-Learning/Lab3/Test3.rmd', documentation = 0)), eval = FALSE}
+```
 

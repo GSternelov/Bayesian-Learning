@@ -1,5 +1,7 @@
- 
+
 # Lab 4
+library(mvtnorm)
+library(coda)
 ## Assignment 1
 eBay <- read.delim("C:/Users/Gustav/Documents/Bayesian-Learning/Lab4/eBay.dat", sep="", header=TRUE)
 
@@ -10,8 +12,6 @@ summary(PoiGLM)
 # PowerSeller, Minblem and LargNeg insignificant. 
 
 # b)
-library(mvtnorm)
-
 y <- as.matrix(eBay[,1])
 X <- as.matrix(eBay[,-1])
 Sigma <- 100 * solve(t(X) %*% X)
@@ -19,7 +19,7 @@ mu <- as.vector(rep(0,ncol(X))) # Prior mean vector
 
 LogPostPoisson <- function(betaVect,y,X,mu,Sigma){
   nPara <- length(betaVect)
-
+  
   logLik <- sum( y *  (X %*% betaVect) - exp(X %*% betaVect)  )
   abs(logLik) == Inf
   logPrior <- dmvnorm(betaVect, matrix(0,nPara,1), Sigma, log=TRUE)
@@ -27,7 +27,6 @@ LogPostPoisson <- function(betaVect,y,X,mu,Sigma){
 }
 
 initVal <- as.vector(rep(0,dim(X)[2])); 
-
 OptimResults<-optim(initVal,LogPostPoisson,gr=NULL,y,X,mu,Sigma,method=c("BFGS"),control=list(fnscale=-1),hessian=TRUE)
 
 approxPostStd <- sqrt(diag(-solve(OptimResults$hessian))) # Computing approximate standard deviations.
@@ -35,17 +34,15 @@ print('The posterior mode is:')
 print(OptimResults$par)
 print('The approximate posterior standard deviation is:')
 print(approxPostStd)
-
-
 # c)
 
 logPostFunc <- function(theta, dist, ...){
   dVal <- sum(dist(theta, ...))
   return(dVal)
 }
-logPostFunc(as.numeric(y), dpois, lambda=exp((X) %*% as.numeric(betas[i,])), log = TRUE)
+logPostFunc(theta=as.numeric(y), dist=dpois, lambda=exp((X) %*% as.numeric(posMode)), log=TRUE)
 
-
+sum(dpois(x=as.numeric(y), lambda=exp((X) %*% as.numeric(posMode)), log=TRUE))
 # Proposal distribution
 posMode <- OptimResults$par
 negHessian <- diag(sqrt(diag(-solve(OptimResults$hessian))))
@@ -57,19 +54,16 @@ MA <- function(func, c, iter, dist, ...){
   accProb <- data.frame(U=0, alpha=0)
   for(i in 1:iter){
     # First, draw a proposal set of betas
-    b_point<- rmvnorm(1, mean=as.numeric(betas[i,]), sigma= c * negHessian)
+    b_point <- rmvnorm(1, mean=as.numeric(betas[i,]), sigma= c * negHessian)
     # Sample a uniform[0,1] valie
     U <- runif(1, 0, 1)
     accProb[i,1] <- U
     # Evaluates dmvnorm for the draw and the former set of betas
     # And do the same for the target distribution
-    q_x <- dmvnorm(betas[i,], mean = b_point, sigma = c * negHessian,log = TRUE)
-    fx_1 <- logPostFunc(as.numeric(y), dpois, lambda=exp((X) %*% as.numeric(b_point)), log = TRUE)
-    
-    q_y <- dmvnorm(b_point, mean = as.numeric(betas[i,]), sigma = c * negHessian, log = TRUE) 
-    fx_2 <- logPostFunc(as.numeric(y), dpois, lambda=exp((X) %*% as.numeric(betas[i,])), log = TRUE)
+    fx_1 <- logPostFunc(as.numeric(y), dist, lambda=exp((X) %*% as.numeric(b_point)), log = FALSE)
+    fx_2 <- logPostFunc(as.numeric(y), dist, lambda=exp((X) %*% as.numeric(betas[i,])), log = FALSE)
     # Then, the ratio is calculated
-    ratio <-exp(fx_2 - q_y - (fx_1-q_x) ) #exp( q_x*fx_1 - q_y*fx_2  )
+    ratio <-exp(log(fx_1)-log(fx_2))
     alpha <- min(c(1, ratio))
     accProb[i,2] <- alpha
     
@@ -79,14 +73,14 @@ MA <- function(func, c, iter, dist, ...){
       betas[i+1,] <- betas[i,]
     } 
   }
-  return(betas)
+  res <- list(betas=betas, accProb=accProb)
+  return(res)
 }
 
-test <- MA(iter = 100, c = 2.4/3)
-testAccP <- MA(iter = 100, c = 2.4/3)
-mean(testAccP[,1] <= testAccP[,2])
+Sims <- MA(iter = 2000, c = 2.4/3, dist=dpois)
+mean((Sims$accProb[2])[,1])
 
-
+test <- data.frame(Sims$betas)
 
 par(mfrow=c(3,3))
 for(i in 1:9){
@@ -94,9 +88,8 @@ for(i in 1:9){
 }
 
 for(i in 1:9){
-  hist(test[,i], type="l")  
+  hist(test[,i])  
 }
 
-library(coda)
 effectiveSize(test)
 
