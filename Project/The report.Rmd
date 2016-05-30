@@ -54,31 +54,35 @@ head(res1516)
 ## The model
 The number of goals scored in a game or by each team can be shown to be Poisson distributed. This is proven in a lot of articles, for instance by Baio and Biangiardo in the article mentioned earlier in the report. 
 $$Goals \sim Poisson(\lambda)$$
-The expected number of goals for the home and away team are then modeled as being Poisson distributed in the following way.
+Thus, the expected number of goals for the home and away team are then modeled as being Poisson distributed in the following way.
 $$ y_{gj} | \theta_{gj} \sim Possion(\theta_{gj} $$
-The number of goals scored by the home team is denoted as... and for the away teams as...
-g is the gth game in the season, or as in this example the sample of games since the data set contains more than a full season
+The number of goals scored by the home team is denoted as $y_{gh$} and for the away teams as $y_{gh$}. The notation g is the gth game in the season, or as in this example the gth game in the sample of games since the data set contains more than a full season. 
 
 The $\theta$ parameters represents the average number of goals scored in a game by the home team and the away team. For modeling these parameters is a log-linear random effct model proven to be a suitable choice (for example, Baio and Biangiardo). Then, the expressions for the respective log $\theta$ parameters are specified as follows.  
 $$ log \theta_{gH} = Intercept_{Home} + Skill_{Home} - Skill_{Away} $$
 $$ log \theta_{gA} = Intercept_{Away} + Skill_{Away} - Skill_{Home} $$
 For the log $\theta$:s are two different intercepts estimated, one for the home team and one for the away team. In that way is the advantage of playing at home included in the model. The intercepts shall be interpreted as the log average number of goals in a game when both teams are equally good.  
 An self-evident assumption to make is that the teams in Allsvenskan are on different levels where some teams are more skillful and some teams are less skillful. However, this variable of actual skill of the teams is a latent variable since it not is possible to observe it directly. Instead earlier match results are collected for estimating the skill parameter for each team. The prediction for the number of goals a team will score is then given by the intercept plus the skill of the team minus the skill of the opponents.  
-The priors for the intercepts are set to be very vague in all examples mentioned in the *earlier studies* chapter. Perhaps they not have to be that vague, but on the other side do I not feel sure enough to set a prior which not is considered as vague. 
+The priors for the intercepts are set to be very vague in all examples mentioned in the *earlier studies* chapter. Perhaps they not have to be that vague, but on the other side do I not feel confident enough to set a prior which not would be considered as vague. 
 $$ Intercept_{Home} \sim Normal(0,4^2) $$
 $$ Intercept_{Away} \sim Normal(0,4^2) $$
-The prior for the skill parameter is normally distributed with the hyper-priors $\mu_{Teams}$ and $\sigma^2_{Teams})$ as parameters.
+The prior for the skill parameter is normally distributed with the hyper-priors $\mu_{Teams}$ and $\sigma^2_{Teams}$ as parameters.
 $$ Skill_{1,...,T} \sim Normal(\mu_{Teams}, \sigma^2_{Teams})$$
 The hyper-priors for the skill parameter are also chosen to be vague:
 $$ \mu_{Teams} \sim Normal(0,4^2) $$
 $$ \sigma_{Teams} \sim Normal(0,4^2) $$
-The decision to set the mean for the $\mu_{Teams}$ to zero may cause a bit of overshrinkness for the skill estimates. However, as mentioned earlier, this was mainly a problem for the teams at the very top of the Premier League who were a lot better than the other teams during that season. Allsvenskan on the other hand is well-known for being a very even league with a lot of teams competing for the title instead for just a few. If this fact lowers the risk of overshrinkage is hard to tell, but it might be interesting to compare and investigate if it seem o have any effect. 
+The decision to set the mean for the $\mu_{Teams}$ to zero may cause a bit of overshrinkness for the skill estimates. However, as mentioned earlier, this was mainly a problem for the teams at the very top of the Premier League who were a lot better than the other teams during that season. Allsvenskan on the other hand is well-known for being a very even league with a lot of teams competing for the title instead for just a few. If this fact lowers the risk of overshrinkage is hard to tell, but it might be interesting to compare and investigate if it seem to have any effect. 
 
 
 Anchors the first skill parameter at zero
 
+The samples of the parameters are obtained by Gibbs sampling. 
 
-## Gibbs sampling
+DAG representation of the model:
+
+The two hyper-parameters in the model, mu and sigma, builds a latent structure and this structure is assumed to be representive for all the games played in a season. The use of the hyper-parameters is to determine the average scoring rate
+
+JÄMFÖR med Baio and Biangiardo så det inte är för likt.
 
 ## Expected number of goals
 How to do for analysing the skill measures (beräkningar i Bååts raport för att få förväntat antal mål på hemmaplan t ex. )  
@@ -88,7 +92,9 @@ One estimate for when the teams are playing at home and one for when they are pl
 
 ## Highest density intervals (HDI)
 
+
 # Software
+
 
 # Results
 

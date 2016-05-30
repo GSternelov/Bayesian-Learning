@@ -1,0 +1,152 @@
+---
+title: "Computer lab 4"
+author: "Kevin Neville"
+date: "16 maj 2016"
+output: pdf_document
+---
+# 1.a)
+
+```{r, echo=FALSE}
+# Lab 4
+# Read data
+ebay <- read.table("C:\\Users\\Gustav\\Documents\\Bayesian-Learning\\Lab4\\eBay.dat", header = T)
+y <- as.matrix(ebay$nBids)
+X <- as.matrix(ebay[,-1])
+# formula <- paste(colnames(ebay)[-c(1:2)],collapse = " + ")
+
+# Exclude "Const" from X, since glm calculates an intercept.
+m1 <- glm(nBids~PowerSeller + VerifyID + Sealed + Minblem + MajBlem + LargNeg + LogBook + MinBidShare, data=ebay, family = poisson)
+summary(m1)
+```
+The glm function estimates its own intercept, therefore we exclude the variable *Const*. But the `glm()` function estimates its own intercept, which from the output is said to be significant.
+Five additionally parameters are significant. Those are:
+
+* **VerifyID** (is the seller verified by eBay?)
+* **Sealed** (was the coin sold sealed in never opened envelope?)
+* **MajBlem** (a major defect?)
+* **LogBook** (logarithm of the coins book value according to expert sellers. Stan- dardized)
+* **MinBidShare** (a variable that measures ratio of the minimum selling price (starting price) to the book value. Standardized).
+
+# 1.b)
+```{r, echo=FALSE, message=FALSE}
+library(mvtnorm)
+
+#X <- as.matrix(ebay[,2:10])
+covNames <- names(ebay)[2:length(names(ebay))]
+nPara <- dim(X)[2]
+
+# Setting up the prior
+mu <- as.vector(rep(0,nPara)) # Prior mean vector
+Sigma <- 100*solve(t(X)%*%X)
+
+LogPostPoiss <- function(betaVect,y,X){
+  nPara <- length(betaVect)
+  logLik <- sum(y * (X %*% betaVect) - exp(X %*% betaVect))
+  logPrior <- dmvnorm(betaVect, matrix(0,nPara,1), Sigma, log=TRUE)
+  return(logLik + logPrior)
+}
+
+initVal <- as.vector(rep(0,dim(X)[2])); 
+OptimResults<-optim(initVal,LogPostPoiss,gr=NULL,y,X,method=c("BFGS"),control=list(fnscale=-1),hessian=TRUE)
+
+
+options(scipen = 999)
+# Output of the two different beta estimations
+data.frame(glm.poisson=m1$coefficients, Bayes=OptimResults$par, Difference=m1$coefficients-OptimResults$par)
+```
+
+We conclude that the estimation done with bayes and glm are very similiar since all betas differ with at most 0.001.
+
+# 1.c)
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+LogPostfunc <- function(theta, someFunction, ...){
+  theta <- as.numeric(theta)
+  res <- sum(someFunction(theta, ...))
+  return(res)
+}
+# log(LogPostfunc(as.numeric(Y), dpois, lambda=exp((X) %*% as.numeric(Betas_p))))
+# log(LogPostfunc(as.numeric(Y), dpois, lambda=exp((X) %*% as.numeric(Betas_p)), log=FALSE))
+
+#init_betas <- OptimResults$par # This is my init values for Betas_c (=Current Betas)
+posMode <- OptimResults$par
+negHessian <- solve(-OptimResults$hessian)
+
+betas <- data.frame(matrix(vector(), 10, 9))
+betas[1,] <- posMode
+Metropolis <- function(c, lpf,iter, ...){
+  accProb <- data.frame(U=0, alpha=0)
+  for(i in 1:iter){
+    b_point <- rmvnorm(1, mean=as.numeric(betas[i,]), sigma= c * negHessian)
+    U <- runif(1, 0, 1)
+    accProb[i,1] <- U
+    fx_1 <- lpf(as.numeric(b_point),...)
+    fx_2 <- lpf(as.numeric(betas[i,]),...)
+    ratio <- exp(fx_1-fx_2)
+    alpha <- min(c(1, ratio))
+    accProb[i,2] <- alpha
+    
+    if (U <= alpha) {
+      betas[i+1,] <- b_point
+    }else{
+      betas[i+1,] <- betas[i,]
+    } 
+  }
+  res <- list(betas=betas, accProb=accProb)
+  return(res)
+}
+
+hejTest <- Metropolis(c = 2.4/3,lpf=LogPostPoiss, iter=10000, y=y, X=X)
+
+RatAlp <- hejTest[[2]] # Alla ratios och alpha för varje körning
+AllBetas <- hejTest[[1]] # Alla betas för varje körning
+# mean(RatAlp$Alpha)
+
+par(mfrow=c(3,3))
+for(i in 1:9){
+  plot(AllBetas[,i], main = paste(colnames(AllBetas)[i]), type="l")  
+}
+
+AllBetasWhB <- AllBetas[1001:10000,]
+for(i in 1:9){
+  hist(AllBetasWhB[,i], main = paste(colnames(AllBetas)[i]))  
+}
+
+library(coda)
+effectiveSize(AllBetas)
+
+
+#tail(AllBetas)
+```
+
+For 10 000 iterations we get the results presented with the plots above. Looking at the trace plots it seems like the chain for all of the cofficients does converge. Neither of the chains get stuck for any long period and nothing but a random pattern can be seen in the chains
+
+The histograms does also indicate that the algorithm has been succesfull. In all of the histograms the draws of values for the coefficients appear to be normally distributed. 
+
+The numbers below the histograms are the effective sample sizes or the respective cofficient. It seems like the chains are rather efficient and this is also confirmed by the auto-correlation plots presented below.
+```{r, echo=FALSE}
+par(mfrow=c(3,3))
+for(i in 1:9){
+  acf(AllBetas[,i])
+}
+```
+
+
+
+# 1.d)
+```{r, echo=FALSE}
+# Probability of no bidders.
+newAuction <- c(Intercept=1,PowereSeller=1, VerifyId=1, Sealed=1, MinBlem=0,
+                MajBlem=0, LargNeg=0, LogBook=1, MinBidShare=0.5)
+
+res <- rowSums(newAuction * AllBetasWhB) # Sum all variables simluations
+predRes <- exp(res)
+hist(predRes)
+prop <- length(which(res <= 0)) / length(res) # Calculate all bids equal and less than zero.
+```
+The probability of getting zero bids on this item for this user is `r prop`.
+
+\pagebreak
+
+# R code
+```{r code=readLines(knitr::purl("C:\\Users\\Gustav\\Documents\\Bayesian-Learning\\Lab4\\Computer-lab-4.Rmd",documentation = 1)), eval = FALSE}
