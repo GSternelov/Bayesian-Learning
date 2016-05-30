@@ -26,7 +26,7 @@ plotPost = function( paramSampleVec , credMass=0.95 , compVal=NULL ,
     mcmcDensity = density(paramSampleVec)
     postSummary[,"mode"] = mcmcDensity$x[which.max(mcmcDensity$y)]
 
-    source("HDIofMCMC.R")
+    source("C:\\Users\\Gustav\\Documents\\Bayesian-Learning\\Project\\rasmus_baath_user_13_data_analysis_contest\\HDIofMCMC.R")
     HDI = HDIofMCMC( paramSampleVec , credMass )
     postSummary[,"hdiMass"]=credMass
     postSummary[,"hdiLow"]=HDI[1]
